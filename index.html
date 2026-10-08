@@ -1,0 +1,493 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Funcionarios Comunitarios - Sección Integración Comunitaria DEPLACIC</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- SweetAlert2 for modern popups -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- SheetJS for exporting to Excel/CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+    
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="mb-8 p-6 bg-white rounded-lg shadow-md border-t-8" style="border-top-color: #556b2f;">
+            <h1 class="text-3xl font-bold" style="color: #556b2f;">Gestión de Funcionarios Comunitarios</h1>
+            <p class="text-gray-600 text-lg mt-2 font-medium">Sección Integración Comunitaria DEPLACIC</p>
+        </header>
+
+        <!-- Filtros y Botones Superiores -->
+        <div class="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            
+            <!-- Contenedor de Filtros -->
+            <div class="flex flex-wrap gap-4 flex-grow w-full md:w-auto">
+                <div class="flex-1 min-w-[200px]">
+                    <label for="filter-zona" class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Zona:</label>
+                    <select id="filter-zona" class="w-full border-gray-300 rounded-md shadow-sm p-2 border focus:border-green-800 focus:ring-green-800">
+                        <option value="ALL">Todas las Zonas</option>
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label for="filter-prefectura" class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Prefectura:</label>
+                    <select id="filter-prefectura" class="w-full border-gray-300 rounded-md shadow-sm p-2 border focus:border-green-800 focus:ring-green-800">
+                        <option value="ALL">Todas las Prefecturas</option>
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label for="filter-unidad" class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Unidad:</label>
+                    <select id="filter-unidad" class="w-full border-gray-300 rounded-md shadow-sm p-2 border focus:border-green-800 focus:ring-green-800">
+                        <option value="ALL">Todas las Unidades</option>
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label for="filter-estado" class="block text-sm font-medium text-gray-700 mb-1">Estado Cobertura:</label>
+                    <select id="filter-estado" class="w-full border-gray-300 rounded-md shadow-sm p-2 border focus:border-green-800 focus:ring-green-800">
+                        <option value="ALL">Todos</option>
+                        <option value="CUBIERTO">Cubiertos</option>
+                        <option value="FALTANTE">Faltantes (NO TIENE)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto mt-4 md:mt-0 items-end md:items-center h-full">
+                <button id="btn-add-delegado" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    Añadir Nuevo
+                </button>
+                <button id="btn-download" class="w-full sm:w-auto bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded shadow transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Descargar Vista
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Widgets -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500">
+                <h3 class="text-gray-500 text-sm font-semibold uppercase">Total Registros Visualizados</h3>
+                <p id="stat-total" class="text-3xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
+                <h3 class="text-gray-500 text-sm font-semibold uppercase">Puestos Cubiertos</h3>
+                <p id="stat-cubiertos" class="text-3xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-red-500">
+                <h3 class="text-gray-500 text-sm font-semibold uppercase">Puestos Faltantes</h3>
+                <p id="stat-faltantes" class="text-3xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-yellow-500">
+                <h3 class="text-gray-500 text-sm font-semibold uppercase">% Cobertura</h3>
+                <p id="stat-porcentaje" class="text-3xl font-bold text-gray-800">0%</p>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="overflow-x-auto h-[600px] overflow-y-auto relative">
+                <table id="dataTable" class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zona / Prefectura</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidad</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cargo / Cuadrante</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grado / Nombre (Actual)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Data will be inserted here -->
+                        <tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Cargando datos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // CONFIGURACIÓN CRÍTICA
+        // URL de la App Script que nos pasaste
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWIzriyrtbMOXGdpE6ReFnXo7oss3F5HdBVoLDSXIXM3F84ExqMy42e4mAYmxqfBhdGg/exec";
+        
+        // URL del CSV. Como están en la misma carpeta en GitHub, la ruta relativa es suficiente.
+        const CSV_URL = "datos_delegados.csv"; 
+
+        // Variables Globales
+        let globalData = [];
+        let filteredData = [];
+
+        // DOM Elements
+        const tableBody = document.getElementById('table-body');
+        const filterZona = document.getElementById('filter-zona');
+        const filterPrefectura = document.getElementById('filter-prefectura');
+        const filterUnidad = document.getElementById('filter-unidad');
+        const filterEstado = document.getElementById('filter-estado');
+        
+        // Carga inicial
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            filterZona.addEventListener('change', () => {
+                updateDependentFilters('zona');
+                applyFilters();
+            });
+            filterPrefectura.addEventListener('change', () => {
+                updateDependentFilters('prefectura');
+                applyFilters();
+            });
+            filterUnidad.addEventListener('change', applyFilters);
+            filterEstado.addEventListener('change', applyFilters);
+
+            document.getElementById('btn-add-delegado').addEventListener('click', handleAddNew);
+            document.getElementById('btn-download').addEventListener('click', downloadCurrentView);
+        }
+
+        // Cargar datos vía PapaParse
+        function loadData() {
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if(results.data && results.data.length > 0) {
+                        globalData = results.data;
+                        filteredData = [...globalData];
+                        populateFilters(globalData);
+                        renderTable(filteredData);
+                        updateStats(filteredData);
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-red-500">No se encontraron datos en el archivo CSV.</td></tr>';
+                    }
+                },
+                error: function(error) {
+                    console.error("Error cargando CSV:", error);
+                    tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-red-500">Error al cargar datos: ${error.message}. ¿El archivo datos_delegados.csv está en la carpeta?</td></tr>`;
+                }
+            });
+        }
+
+        // Llenar listas desplegables de filtros únicos
+        function populateFilters(data) {
+            const zonas = [...new Set(data.map(item => item.ZONA).filter(Boolean))].sort();
+            
+            // Llenar Zonas
+            filterZona.innerHTML = '<option value="ALL">Todas las Zonas</option>';
+            zonas.forEach(z => {
+                filterZona.innerHTML += `<option value="${z}">${z}</option>`;
+            });
+
+            // Trigger actualizacion de dependientes para llenarlos todos inicialmente
+            updateDependentFilters('init');
+        }
+
+        function updateDependentFilters(triggerLevel) {
+            const selectedZona = filterZona.value;
+            const selectedPrefectura = filterPrefectura.value;
+
+            // Filtro temporal para sacar opciones
+            let dataForOpciones = globalData;
+            
+            if (selectedZona !== 'ALL') {
+                dataForOpciones = dataForOpciones.filter(d => d.ZONA === selectedZona);
+            }
+
+            if (triggerLevel === 'zona' || triggerLevel === 'init') {
+                const prefecturas = [...new Set(dataForOpciones.map(item => item.PREFECTURA).filter(Boolean))].sort();
+                filterPrefectura.innerHTML = '<option value="ALL">Todas las Prefecturas</option>';
+                prefecturas.forEach(p => {
+                    filterPrefectura.innerHTML += `<option value="${p}">${p}</option>`;
+                });
+            }
+
+            if (selectedPrefectura !== 'ALL' && selectedPrefectura !== '') {
+                dataForOpciones = dataForOpciones.filter(d => d.PREFECTURA === selectedPrefectura);
+            }
+
+            if (triggerLevel === 'zona' || triggerLevel === 'prefectura' || triggerLevel === 'init') {
+                const unidades = [...new Set(dataForOpciones.map(item => item['UNIDAD BASE ']).filter(Boolean))].sort();
+                filterUnidad.innerHTML = '<option value="ALL">Todas las Unidades</option>';
+                unidades.forEach(u => {
+                    filterUnidad.innerHTML += `<option value="${u}">${u}</option>`;
+                });
+            }
+        }
+
+        // Aplicar todos los filtros actuales
+        function applyFilters() {
+            const z = filterZona.value;
+            const p = filterPrefectura.value;
+            const u = filterUnidad.value;
+            const e = filterEstado.value;
+
+            filteredData = globalData.filter(row => {
+                let matchZona = (z === 'ALL' || row.ZONA === z);
+                let matchPrefectura = (p === 'ALL' || row.PREFECTURA === p);
+                let matchUnidad = (u === 'ALL' || row['UNIDAD BASE '] === u);
+                
+                let isFaltante = (row['NOMBRE COMPLETO'] || '').toUpperCase().includes('NO TIENE');
+                let matchEstado = true;
+                if (e === 'CUBIERTO') matchEstado = !isFaltante;
+                if (e === 'FALTANTE') matchEstado = isFaltante;
+
+                return matchZona && matchPrefectura && matchUnidad && matchEstado;
+            });
+
+            renderTable(filteredData);
+            updateStats(filteredData);
+        }
+
+        function updateStats(data) {
+            const total = data.length;
+            const faltantes = data.filter(r => (r['NOMBRE COMPLETO'] || '').toUpperCase().includes('NO TIENE')).length;
+            const cubiertos = total - faltantes;
+            const pct = total === 0 ? 0 : Math.round((cubiertos / total) * 100);
+
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-cubiertos').innerText = cubiertos;
+            document.getElementById('stat-faltantes').innerText = faltantes;
+            
+            const pctEl = document.getElementById('stat-porcentaje');
+            pctEl.innerText = `${pct}%`;
+            pctEl.className = `text-3xl font-bold ${pct < 50 ? 'text-red-600' : pct < 80 ? 'text-yellow-600' : 'text-green-600'}`;
+        }
+
+        // Renderizar tabla HTML
+        function renderTable(data) {
+            tableBody.innerHTML = '';
+            
+            if (data.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">No hay registros que coincidan con los filtros.</td></tr>';
+                return;
+            }
+
+            // Para optimizar rendimiento limitamos a los primeros 500 si hay muchos, pero como permitimos descargar, los mostramos todos.
+            const fragment = document.createDocumentFragment();
+
+            data.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                tr.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+
+                const isFaltante = (row['NOMBRE COMPLETO'] || '').toUpperCase().includes('NO TIENE');
+                const badgeStatus = isFaltante 
+                    ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Faltante</span>'
+                    : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Cubierto</span>';
+
+                // Escapar comillas para JSON seguro en botones
+                const rowDataJson = encodeURIComponent(JSON.stringify(row));
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                        <div class="font-medium text-gray-900">${row.ZONA || '-'}</div>
+                        <div class="text-xs">${row.PREFECTURA || '-'}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900 font-medium">
+                        ${row['UNIDAD BASE '] || '-'}
+                        <div class="text-xs text-gray-500 font-normal mt-1">${row.DESTACAMENTO || ''}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                        <div class="font-medium">${row['TIPO DE CARGO'] || '-'}</div>
+                        <div class="text-xs mt-1">Sector: ${row.SECTOR || '-'}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900">
+                        ${isFaltante ? '<span class="text-red-500 italic">Sin asignación</span>' : `<span class="font-bold">${row.GRADO || ''}</span> ${row['NOMBRE COMPLETO'] || '-'}`}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${badgeStatus}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="handleRelevar('${rowDataJson}')" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded transition-colors">
+                            Relevar / Asignar
+                        </button>
+                    </td>
+                `;
+                fragment.appendChild(tr);
+            });
+
+            tableBody.appendChild(fragment);
+        }
+
+        // Lógica para añadir nuevo registro manual (simulación front + envío a sheet)
+        function handleAddNew() {
+            Swal.fire({
+                title: 'Añadir Nuevo Funcionario / Delegado',
+                html: `
+                    <p class="text-sm text-gray-500 mb-4 text-left">Nota: Esta acción registrará el ingreso en el sistema de cambios.</p>
+                    <input id="swal-unidad" class="swal2-input !w-full !m-0 !mb-3 !max-w-none text-sm" placeholder="Unidad Base (Ej: 2DA COM. ANTOFAGASTA)">
+                    <input id="swal-cargo" class="swal2-input !w-full !m-0 !mb-3 !max-w-none text-sm" placeholder="Cargo (Ej: DELEGADO CUADRANTE)">
+                    <input id="swal-sector" class="swal2-input !w-full !m-0 !mb-3 !max-w-none text-sm" placeholder="Cuadrante / Sector (Ej: 8)">
+                    <input id="swal-entrante" class="swal2-input !w-full !m-0 !mb-3 !max-w-none text-sm" placeholder="Grado y Nombre Entrante (Ej: CABO 1RO PEREZ JUAN)">
+                    <textarea id="swal-obs" class="swal2-textarea !w-full !m-0 !max-w-none text-sm h-24" placeholder="Observaciones o motivo (Opcional)"></textarea>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Registrar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#2563eb',
+                customClass: {
+                    container: 'font-sans'
+                },
+                preConfirm: () => {
+                    const unidad = document.getElementById('swal-unidad').value.trim();
+                    const cargo = document.getElementById('swal-cargo').value.trim();
+                    const sector = document.getElementById('swal-sector').value.trim();
+                    const entrante = document.getElementById('swal-entrante').value.trim();
+                    const obs = document.getElementById('swal-obs').value.trim();
+
+                    if (!unidad || !entrante) {
+                        Swal.showValidationMessage('Unidad y Funcionario Entrante son obligatorios');
+                        return false;
+                    }
+                    return { unidad, cargo, sector, entrante, obs };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    enviarCambioSheet(
+                        result.value.unidad, 
+                        result.value.sector, 
+                        "NUEVA CREACIÓN (SIN PREDECESOR)", 
+                        result.value.entrante, 
+                        result.value.obs + ` [Cargo asignado: ${result.value.cargo}]`
+                    );
+                }
+            });
+        }
+
+        // Lógica de Relevo usando datos existentes
+        function handleRelevar(encodedRowData) {
+            const rowData = JSON.parse(decodeURIComponent(encodedRowData));
+            
+            // Construir nombre saliente amigable
+            const gradoSaliente = rowData.GRADO === 'NO TIENE' ? '' : (rowData.GRADO || '');
+            const nombreSaliente = rowData['NOMBRE COMPLETO'] === 'NO TIENE' ? 'PUESTO VACANTE' : rowData['NOMBRE COMPLETO'];
+            const salienteFull = `${gradoSaliente} ${nombreSaliente}`.trim();
+            const esVacante = nombreSaliente === 'PUESTO VACANTE';
+
+            Swal.fire({
+                title: esVacante ? 'Asignar Funcionario' : 'Relevar Funcionario',
+                html: `
+                    <div class="text-left text-sm mb-4 bg-gray-50 p-3 rounded border">
+                        <p><strong>Unidad:</strong> ${rowData['UNIDAD BASE ']}</p>
+                        <p><strong>Sector/Cuadrante:</strong> ${rowData.SECTOR}</p>
+                        <p><strong>Saliente:</strong> <span class="${esVacante ? 'text-red-500 font-bold' : ''}">${salienteFull}</span></p>
+                    </div>
+                    <div class="text-left">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Grado y Nombre (Entrante)</label>
+                        <input id="swal-input-entrante" class="swal2-input !w-full !m-0 !mb-3 !max-w-none text-sm" placeholder="Ej: SARGENTO 2DO GONZALEZ PEDRO" autofocus>
+                        
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                        <textarea id="swal-input-obs" class="swal2-textarea !w-full !m-0 !max-w-none text-sm h-24" placeholder="Motivo del cambio, fecha efectiva, etc."></textarea>
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: esVacante ? 'Asignar' : 'Confirmar Relevo',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#2563eb',
+                customClass: {
+                    container: 'font-sans'
+                },
+                preConfirm: () => {
+                    const entrante = document.getElementById('swal-input-entrante').value.trim();
+                    const obs = document.getElementById('swal-input-obs').value.trim();
+                    
+                    if (!entrante) {
+                        Swal.showValidationMessage('Debe ingresar el funcionario entrante');
+                        return false;
+                    }
+                    return { entrante: entrante, observaciones: obs };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    enviarCambioSheet(rowData['UNIDAD BASE '], rowData.SECTOR, salienteFull, result.value.entrante, result.value.observaciones);
+                }
+            });
+        }
+
+        // Función para enviar datos al Google Sheet vía Apps Script
+        function enviarCambioSheet(unidad, sector, saliente, entrante, observaciones) {
+            
+            Swal.fire({
+                title: 'Registrando cambio...',
+                text: 'Guardando en la base de datos de la nube.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Preparar payload
+            const payload = {
+                unidad: unidad,
+                sector: sector,
+                funcionario_saliente: saliente,
+                funcionario_entrante: entrante,
+                observaciones: observaciones
+            };
+
+            // Hacer petición POST a Apps Script
+            fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                // Usamos text/plain o enviar formato x-www-form-urlencoded para evitar problemas estrictos de preflight CORS si json no pasa directo.
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Registrado!',
+                        text: 'El cambio fue guardado correctamente en Google Sheets.',
+                        confirmButtonColor: '#2563eb'
+                    });
+                } else {
+                    throw new Error(data.message || 'Error desconocido del servidor');
+                }
+            })
+            .catch(error => {
+                console.error("Error al registrar:", error);
+                
+                // Fallback UI si hay error CORS (a veces pasa en Github pages dependiendo de configuración, le damos feedback al usuario)
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Aviso de Conexión',
+                    html: `Se intentó enviar el registro, pero ocurrió un problema de conexión (posible bloqueo CORS o permisos de Apps Script).<br><br><code>${error.message}</code><br><br><b>Asegúrate de que el Apps Script fue implementado con acceso para "Cualquier Persona".</b>`,
+                    confirmButtonColor: '#2563eb'
+                });
+            });
+        }
+
+        // Función para descargar la vista actual en Excel
+        function downloadCurrentView() {
+            if (filteredData.length === 0) {
+                Swal.fire("Sin datos", "No hay datos para descargar con los filtros actuales.", "info");
+                return;
+            }
+
+            // Crear hoja de cálculo con SheetJS
+            const ws = XLSX.utils.json_to_sheet(filteredData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Delegados");
+
+            // Generar nombre de archivo con fecha
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const fileName = `Delegados_Filtro_${dateStr}.xlsx`;
+
+            // Descargar
+            XLSX.writeFile(wb, fileName);
+        }
+
+    </script>
+</body>
+</html>
